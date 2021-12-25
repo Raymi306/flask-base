@@ -1,9 +1,8 @@
 import app.blueprints.auth as auth
-import app.blueprints.leaderboard as leaderboard
 
-modules = auth, leaderboard
+modules = (auth,)
 
-blueprints = (module.bp for module in modules)
+blueprints = tuple(module.bp for module in modules)
 
 def _get_hooks(module, before_or_after):
     return [hook for hook in getattr(module, f'{before_or_after}_hooks', [])]

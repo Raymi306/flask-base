@@ -1,10 +1,12 @@
 import os
 
+from argon2 import PasswordHasher
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
 
 db = SQLAlchemy()
+password_hasher = PasswordHasher()
 
 
 def create_app(test_config=None):
@@ -16,9 +18,10 @@ def create_app(test_config=None):
         return 'up'
 
     flask_app.config.from_mapping({
-        'SECRET_KEY': 'default_unsafe',
+        'SECRET_KEY': 'UNSAFE',
         'SQLALCHEMY_DATABASE_URI': f"sqlite:////{os.path.join(flask_app.instance_path, 'leaderboard.sqlite')}",
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
+        'SQLALCHEMY_ECHO': False,
         })
 
     if test_config is None:
@@ -31,7 +34,7 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    import app.models.app_user
+    import app.models.user
     db.init_app(flask_app)
     if test_config is None:
         db.create_all()

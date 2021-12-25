@@ -2,30 +2,38 @@ import os
 import tempfile
 
 from unittest import TestCase
-from app import create_app, db
+from app import create_app, password_hasher, db
+from app.models.user import User
 
 
 class FlaskTestSuite(TestCase):
 
     def setUp(self):
-        db_fd, db_path = tempfile.mkstemp()
         app = create_app({
             'TESTING': True,
-            'SQLALCHEMY_DATABASE_URI': f'sqlite:////{db_path}',
+            'SQLALCHEMY_DATABASE_URI': f'sqlite://',
             })
         self.app = app
-        with app.app_context():
+        with self.app.app_context():
             db.create_all()
         self.client = app.test_client()
 
-    def teardown(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
+    def tearDown(self):
+        with self.app.app_context():
+            db.session.remove()
 
-def create_user(details, password):
-    from app.models.app_user import User
-    from argon2 import PasswordHasher
-    hasher = PasswordHasher()
-    hash_ = hasher.hash(password)
-    details.setdefault('email', 'test@test.tld')
-    user = User(**details, hash=_hash)
+    def create_user(self, details=None, password='abcd1234'):
+        hash_ = password_hasher.hash(password)
+        if not details:
+            details = {}
+        details.setdefault('email', 'test@test.tld')
+        user = User(**details, hash=hash_)
+        with self.app.app_context():
+            db.session.add(user)
+            db.session.commit()
+            result = user.uuid
+        return result
+
+    def get_user(self, uuid):
+        with self.app.app_context():
+            return User.query.get(uuid)
