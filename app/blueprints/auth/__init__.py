@@ -1,6 +1,7 @@
 from base64 import b64decode
 from functools import wraps
 
+from argon2.exceptions import InvalidHash
 from flask import Blueprint, request, current_app, g
 import jwt
 from sqlalchemy.exc import IntegrityError
@@ -35,31 +36,32 @@ def login_required(fn):
 
 
 def make_user_jwt_token(user):
-    payload = {
-            'uuid': user.uuid.hex(),
-            'login_counter': user.login_counter,
-            }
+    if user:
+        payload = {
+                'uuid': user.uuid.hex(),
+                'login_counter': user.login_counter,
+                }
+    else:
+        payload = {
+                'uuid': '',
+                'login_counter': ''
+                }
     return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm="HS256")
     return None
-
-
-@bp.route('', methods=('GET',))
-@login_required
-def stub():
-    return '', 200
 
 
 @bp.route('/login', methods=('POST',))
 def login():
     email = request.json.get('email')
     password_raw = request.json.get('password')
-    hash_ = ''
     user = UserModel.query.filter_by(email=email).one_or_none()
-    if user:
-        hash_ = user.hash
+    hash_ = user.hash if user else ''
     token = make_user_jwt_token(user)
-    if password_hasher.verify(hash_, password_raw):
+    try:
+        password_hasher.verify(hash_, password_raw)
         return {'token': token}, 200
+    except InvalidHash:
+        pass
     raise Unauthorized('Login failed')
 
 

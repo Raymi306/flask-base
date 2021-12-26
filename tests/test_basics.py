@@ -1,13 +1,17 @@
 from flask import g
 
 from app.models.user import User as UserModel
-from .conftest import FlaskTestSuite
+from . import FlaskTestSuite
 
 
-def register(client, email='test@test.tld', password='abcd1234'):
+DEFAULT_EMAIL = 'test@test.tld'
+DEFAULT_PWD = 'abcd1234'
+
+
+def register(client, email=DEFAULT_EMAIL, password=DEFAULT_PWD):
     return client.post('/auth/register', json={'email': email, 'password': password})
 
-def login(client, email='test@test.tld', password='abcd1234'):
+def login(client, email=DEFAULT_EMAIL, password=DEFAULT_PWD):
     return client.post('/auth/login', json={'email': email, 'password': password})
 
 
@@ -17,6 +21,8 @@ class TestCore(FlaskTestSuite):
             response = client.get('/heartbeat')
             self.assertEqual(b'up', response.data)
 
+
+class TestAuth(FlaskTestSuite):
     def test_register_normal(self):
         with self.client as client:
             with self.app.app_context():
@@ -35,8 +41,14 @@ class TestCore(FlaskTestSuite):
                 self.assertEqual(200, response.status_code)
                 self.assertEqual(1, len(UserModel.query.all()))
 
-    def test_login(self):
+    def test_login_normal(self):
         with self.client as client:
             register(client)
             response = login(client)
             self.assertEqual(200, response.status_code)
+
+    def test_login_failure(self):
+        with self.client as client:
+            register(client)
+            response = login(client, email='foo@bar.baz')
+            self.assertEqual(401, response.status_code)
